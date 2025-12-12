@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Archivos de Outlook (no commitear archivos de prueba)
+*.ost
+*.pst
+*.msg
+*.eml
+
+# Directorios temporales
+.temp_extraction_*/
+temp/
+tmp/
+
+# Logs
+*.log
+logs/
+
+# Archivos de testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Archivos del sistema
+Thumbs.db
+desktop.ini
+.Spotlight-V100
+.Trashes

@@ -1,0 +1,26 @@
+# Dependencias de Python para OST to PST Converter
+
+# GUI - Tkinter viene incluido con Python, no requiere instalación adicional
+
+# Bibliotecas opcionales para conversión (instalar según el método preferido):
+
+# Opción 1: pypff (libpff Python bindings) - Código abierto
+# Requiere libpff instalado en el sistema
+# pypff>=20211114
+
+# Opción 2: Aspose.Email - Comercial (requiere licencia)
+# Método más robusto y completo
+# Descomenta la siguiente línea para instalar:
+# Aspose.Email-for-Python-via-NET>=24.12
+
+# Herramientas del sistema requeridas (instalar con gestor de paquetes del sistema):
+# - readpst (paquete: pst-utils en Debian/Ubuntu)
+#   Instalar con: sudo apt-get install pst-utils
+#
+# - libpff (para pypff)
+#   Instalar con: sudo apt-get install libpff-dev libpff-python3
+
+# Desarrollo y testing (opcional)
+# pytest>=7.0.0
+# black>=22.0.0
+# mypy>=0.950
