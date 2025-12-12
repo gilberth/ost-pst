@@ -9,13 +9,19 @@
 # pypff>=20211114
 
 # Opción 2: Aspose.Email - Comercial (requiere licencia)
-# Método más robusto y completo
+# Método más robusto y completo, convierte OST a PST directamente
 # Descomenta la siguiente línea para instalar:
 # Aspose.Email-for-Python-via-NET>=24.12
 
+# Opción 3: pywin32 - Solo Windows (requiere Microsoft Outlook instalado)
+# Usa Outlook COM Automation para conversión directa OST->PST
+# Descomenta la siguiente línea para instalar en Windows:
+# pywin32>=306
+
 # Herramientas del sistema requeridas (instalar con gestor de paquetes del sistema):
-# - readpst (paquete: pst-utils en Debian/Ubuntu)
+# - readpst (paquete: pst-utils en Debian/Ubuntu) - RECOMENDADO
 #   Instalar con: sudo apt-get install pst-utils
+#   Usado por el método híbrido MBOX (mejor opción gratuita)
 #
 # - libpff (para pypff)
 #   Instalar con: sudo apt-get install libpff-dev libpff-python3

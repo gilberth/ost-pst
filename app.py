@@ -79,16 +79,21 @@ class OSTtoPSTApp:
         options_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
 
         ttk.Label(options_frame, text="Método:").grid(row=0, column=0, sticky=tk.W, padx=5)
-        self.method = tk.StringVar(value="readpst")
+        self.method = tk.StringVar(value="hybrid_mbox")
         methods = [
-            ("readpst (Recomendado)", "readpst"),
-            ("libpff", "libpff"),
-            ("Aspose.Email (Comercial)", "aspose")
+            ("Híbrido MBOX (Recomendado)", "hybrid_mbox"),
+            ("Aspose.Email (Comercial)", "aspose"),
+            ("Win32COM (Windows+Outlook)", "win32com"),
+            ("readpst (Solo extracción)", "readpst"),
+            ("libpff (Solo lectura)", "libpff")
         ]
 
+        # Distribuir en dos filas para mejor visualización
         for i, (text, value) in enumerate(methods):
+            row = i // 3
+            col = (i % 3) + 1
             ttk.Radiobutton(options_frame, text=text, variable=self.method,
-                          value=value).grid(row=0, column=i+1, padx=10)
+                          value=value).grid(row=row, column=col, padx=5, pady=2, sticky=tk.W)
 
         # Botones de acción
         button_frame = ttk.Frame(main_frame)
@@ -175,6 +180,11 @@ class OSTtoPSTApp:
         else:
             self.log("✗ readpst no encontrado (instalar con: apt-get install pst-utils)", "WARNING")
 
+        if available['hybrid_mbox']:
+            self.log("✓ Método híbrido MBOX disponible", "INFO")
+        else:
+            self.log("✗ Método híbrido MBOX no disponible (requiere readpst)", "WARNING")
+
         if available['libpff']:
             self.log("✓ libpff encontrado", "INFO")
         else:
@@ -183,7 +193,12 @@ class OSTtoPSTApp:
         if available['aspose']:
             self.log("✓ Aspose.Email encontrado", "INFO")
         else:
-            self.log("✗ Aspose.Email no encontrado (instalar con: pip install Aspose.Email-for-Python-via-NET)", "WARNING")
+            self.log("✗ Aspose.Email no encontrado (comercial: pip install Aspose.Email-for-Python-via-NET)", "WARNING")
+
+        if available['win32com']:
+            self.log("✓ win32com encontrado (Windows + Outlook)", "INFO")
+        else:
+            self.log("✗ win32com no disponible (solo Windows: pip install pywin32)", "WARNING")
 
         if not any(available.values()):
             self.log("⚠ ADVERTENCIA: No se encontraron herramientas de conversión instaladas", "ERROR")
@@ -191,9 +206,10 @@ class OSTtoPSTApp:
                 "Dependencias faltantes",
                 "No se encontraron herramientas de conversión instaladas.\n\n"
                 "Por favor instale al menos una de las siguientes:\n"
-                "- readpst (pst-utils)\n"
+                "- readpst (pst-utils) - RECOMENDADO\n"
                 "- pypff (Python libpff)\n"
-                "- Aspose.Email-for-Python-via-NET"
+                "- Aspose.Email-for-Python-via-NET (comercial)\n"
+                "- pywin32 (solo Windows con Outlook)"
             )
 
     def validate_inputs(self):
@@ -267,9 +283,11 @@ class OSTtoPSTApp:
             method_map = {
                 'readpst': ConversionMethod.READPST,
                 'libpff': ConversionMethod.LIBPFF,
-                'aspose': ConversionMethod.ASPOSE
+                'aspose': ConversionMethod.ASPOSE,
+                'win32com': ConversionMethod.WIN32COM,
+                'hybrid_mbox': ConversionMethod.HYBRID_MBOX
             }
-            method = method_map.get(method_str, ConversionMethod.READPST)
+            method = method_map.get(method_str, ConversionMethod.HYBRID_MBOX)
 
             self.log(f"Iniciando conversión de {os.path.basename(input_file)}", "INFO")
             self.log(f"Método: {method_str}", "INFO")

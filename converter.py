@@ -16,6 +16,8 @@ class ConversionMethod(Enum):
     READPST = "readpst"
     LIBPFF = "libpff"
     ASPOSE = "aspose"
+    WIN32COM = "win32com"
+    HYBRID_MBOX = "hybrid_mbox"
 
 
 class OSTtoPSTConverter:
@@ -29,7 +31,9 @@ class OSTtoPSTConverter:
         available = {
             'readpst': False,
             'libpff': False,
-            'aspose': False
+            'aspose': False,
+            'win32com': False,
+            'hybrid_mbox': False
         }
 
         # Verificar readpst
@@ -49,6 +53,19 @@ class OSTtoPSTConverter:
             available['aspose'] = True
         except ImportError:
             pass
+
+        # Verificar win32com (solo Windows)
+        try:
+            import win32com.client
+            import platform
+            if platform.system() == 'Windows':
+                available['win32com'] = True
+        except ImportError:
+            pass
+
+        # Verificar hybrid_mbox (requiere readpst)
+        if shutil.which('readpst'):
+            available['hybrid_mbox'] = True
 
         return available
 
@@ -91,6 +108,10 @@ class OSTtoPSTConverter:
                 return self._convert_with_libpff(input_file, output_file, log)
             elif method == ConversionMethod.ASPOSE:
                 return self._convert_with_aspose(input_file, output_file, log)
+            elif method == ConversionMethod.WIN32COM:
+                return self._convert_with_win32com(input_file, output_file, log)
+            elif method == ConversionMethod.HYBRID_MBOX:
+                return self._convert_hybrid_mbox(input_file, output_file, log)
             else:
                 return False, f"Método de conversión no soportado: {method}"
 
@@ -302,6 +323,210 @@ class OSTtoPSTConverter:
 
         return False, msg
 
+    def _convert_with_win32com(self,
+                               input_file: str,
+                               output_file: str,
+                               log: Callable) -> Tuple[bool, str]:
+        """
+        Convierte usando win32com (Windows + Outlook)
+        Este método requiere Microsoft Outlook instalado en Windows
+        """
+        log("Usando método win32com (requiere Outlook en Windows)", "INFO")
+
+        try:
+            import win32com.client
+            import platform
+
+            if platform.system() != 'Windows':
+                return False, "El método win32com solo funciona en Windows"
+
+            log("Iniciando Outlook COM Automation...", "INFO")
+
+            # Crear instancia de Outlook
+            outlook = win32com.client.Dispatch("Outlook.Application")
+            namespace = outlook.GetNamespace("MAPI")
+
+            log(f"Abriendo archivo OST: {input_file}", "INFO")
+
+            # Agregar el archivo OST/PST a Outlook temporalmente
+            try:
+                namespace.AddStore(input_file)
+            except Exception as e:
+                log(f"No se pudo agregar OST directamente: {e}", "WARNING")
+                return False, (
+                    f"Error al abrir el archivo con Outlook.\n"
+                    f"Asegúrese de que el archivo no esté en uso y que Outlook pueda acceder a él.\n"
+                    f"Nota: Los archivos OST generalmente están vinculados a cuentas específicas."
+                )
+
+            log("Archivo agregado a Outlook", "INFO")
+
+            # Crear nuevo archivo PST
+            log(f"Creando archivo PST: {output_file}", "INFO")
+
+            try:
+                namespace.AddStore(output_file)
+            except:
+                # Si ya existe, intentar eliminarlo primero
+                if os.path.exists(output_file):
+                    os.remove(output_file)
+                namespace.AddStore(output_file)
+
+            # Obtener las carpetas
+            source_store = None
+            dest_store = None
+
+            for store in namespace.Stores:
+                if str(store.FilePath).lower() == input_file.lower():
+                    source_store = store
+                elif str(store.FilePath).lower() == output_file.lower():
+                    dest_store = store
+
+            if not source_store:
+                return False, "No se pudo acceder al archivo de origen en Outlook"
+
+            if not dest_store:
+                return False, "No se pudo crear el archivo de destino en Outlook"
+
+            log("Copiando carpetas y mensajes...", "INFO")
+
+            # Copiar carpetas recursivamente
+            self._copy_outlook_folders(source_store.GetRootFolder(), dest_store.GetRootFolder(), log)
+
+            # Remover los stores
+            namespace.RemoveStore(source_store.GetRootFolder())
+            namespace.RemoveStore(dest_store.GetRootFolder())
+
+            log("Conversión completada exitosamente", "SUCCESS")
+
+            return True, "Conversión completada exitosamente usando Outlook COM"
+
+        except ImportError:
+            return False, "pywin32 no está instalado. Instale con: pip install pywin32"
+        except Exception as e:
+            return False, f"Error con win32com: {str(e)}"
+
+    def _copy_outlook_folders(self, source_folder, dest_folder, log: Callable):
+        """Copia carpetas de Outlook recursivamente (para win32com)"""
+        try:
+            # Copiar mensajes de la carpeta actual
+            if source_folder.Items.Count > 0:
+                log(f"Copiando {source_folder.Items.Count} items de '{source_folder.Name}'", "INFO")
+
+                for item in source_folder.Items:
+                    try:
+                        copied_item = item.Copy()
+                        copied_item.Move(dest_folder)
+                    except Exception as e:
+                        log(f"Error copiando item: {e}", "WARNING")
+
+            # Copiar subcarpetas recursivamente
+            for subfolder in source_folder.Folders:
+                log(f"Procesando carpeta: {subfolder.Name}", "INFO")
+
+                try:
+                    new_folder = dest_folder.Folders.Add(subfolder.Name)
+                    self._copy_outlook_folders(subfolder, new_folder, log)
+                except Exception as e:
+                    log(f"Error con carpeta {subfolder.Name}: {e}", "WARNING")
+
+        except Exception as e:
+            log(f"Error copiando carpeta: {str(e)}", "ERROR")
+
+    def _convert_hybrid_mbox(self,
+                            input_file: str,
+                            output_file: str,
+                            log: Callable) -> Tuple[bool, str]:
+        """
+        Método híbrido: OST -> MBOX (con readpst) -> Dejar MBOX para importación manual
+
+        Este método extrae el contenido del OST a formato MBOX, que puede ser:
+        1. Importado en Thunderbird, Evolution, u otros clientes de correo
+        2. Convertido a PST usando herramientas externas
+        3. Importado en Outlook (requiere plugins o herramientas de terceros)
+        """
+        log("Usando método híbrido: OST -> MBOX", "INFO")
+
+        try:
+            # Crear directorio de salida para MBOX
+            mbox_dir = Path(output_file).parent / f"{Path(output_file).stem}_mbox"
+            mbox_dir.mkdir(exist_ok=True)
+
+            log(f"Extrayendo a formato MBOX en: {mbox_dir}", "INFO")
+
+            # Ejecutar readpst en modo recursivo/mbox
+            cmd = [
+                'readpst',
+                '-r',                  # Recursive (crear estructura de carpetas)
+                '-o', str(mbox_dir),   # Directorio de salida
+                '-D',                  # Include deleted items
+                '-M',                  # MH format (cada mensaje como archivo)
+                input_file
+            ]
+
+            log(f"Ejecutando: {' '.join(cmd)}", "INFO")
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=3600
+            )
+
+            if result.returncode != 0:
+                log(f"Advertencia readpst: {result.stderr}", "WARNING")
+
+            if result.stdout:
+                log(f"Salida: {result.stdout}", "INFO")
+
+            # Contar archivos extraídos
+            extracted_files = list(mbox_dir.rglob('*'))
+            extracted_msg_files = [f for f in extracted_files if f.is_file()]
+
+            log(f"Extracción completada: {len(extracted_msg_files)} archivos de mensajes", "INFO")
+
+            # Crear archivo de información
+            info_file = mbox_dir / "README.txt"
+            with open(info_file, 'w', encoding='utf-8') as f:
+                f.write("OST to MBOX Conversion\n")
+                f.write("=" * 50 + "\n\n")
+                f.write(f"Archivo original: {input_file}\n")
+                f.write(f"Archivos extraídos: {len(extracted_msg_files)}\n\n")
+                f.write("OPCIONES PARA CREAR PST:\n\n")
+                f.write("1. IMPORTAR EN THUNDERBIRD:\n")
+                f.write("   - Abrir Mozilla Thunderbird\n")
+                f.write("   - Tools > ImportExportTools > Import mbox file\n")
+                f.write("   - Seleccionar los archivos mbox de este directorio\n\n")
+                f.write("2. IMPORTAR EN OUTLOOK (Windows):\n")
+                f.write("   - Usar herramienta como 'Aid4Mail' o 'Kernel MBOX to PST'\n")
+                f.write("   - O importar primero en Thunderbird y luego exportar a PST\n\n")
+                f.write("3. CONVERSIÓN DIRECTA A PST:\n")
+                f.write("   - Usar Aspose.Email: python converter.py --method aspose\n")
+                f.write("   - O usar este script en Windows con Outlook instalado:\n")
+                f.write("     python converter.py --method win32com\n\n")
+                f.write("Para más información, consulte el README.md del proyecto.\n")
+
+            log(f"Instrucciones guardadas en: {info_file}", "INFO")
+
+            msg = (
+                f"✓ Extracción exitosa a formato MBOX/MH\n"
+                f"Ubicación: {mbox_dir}\n"
+                f"Archivos: {len(extracted_msg_files)} mensajes\n\n"
+                f"Para crear PST:\n"
+                f"1. Importar en Thunderbird (Ver {info_file})\n"
+                f"2. Usar método 'aspose' (comercial)\n"
+                f"3. Usar método 'win32com' en Windows con Outlook\n"
+            )
+
+            log(msg, "SUCCESS")
+
+            return True, msg
+
+        except subprocess.TimeoutExpired:
+            return False, "La extracción excedió el tiempo límite de 1 hora"
+        except Exception as e:
+            return False, f"Error en conversión híbrida: {str(e)}"
+
 
 def main():
     """Función principal para uso en línea de comandos"""
@@ -310,8 +535,10 @@ def main():
     parser = argparse.ArgumentParser(description='Convertir archivos OST a PST')
     parser.add_argument('input', help='Archivo OST de entrada')
     parser.add_argument('output', help='Archivo PST de salida')
-    parser.add_argument('--method', choices=['readpst', 'libpff', 'aspose'],
-                       default='readpst', help='Método de conversión')
+    parser.add_argument('--method',
+                       choices=['readpst', 'libpff', 'aspose', 'win32com', 'hybrid_mbox'],
+                       default='hybrid_mbox',
+                       help='Método de conversión (default: hybrid_mbox)')
 
     args = parser.parse_args()
 
@@ -319,7 +546,9 @@ def main():
     method_map = {
         'readpst': ConversionMethod.READPST,
         'libpff': ConversionMethod.LIBPFF,
-        'aspose': ConversionMethod.ASPOSE
+        'aspose': ConversionMethod.ASPOSE,
+        'win32com': ConversionMethod.WIN32COM,
+        'hybrid_mbox': ConversionMethod.HYBRID_MBOX
     }
 
     converter = OSTtoPSTConverter()

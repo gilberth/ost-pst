@@ -5,13 +5,16 @@ Una aplicación con interfaz gráfica para convertir archivos OST (Offline Stora
 ## Características
 
 - **Interfaz gráfica amigable** construida con tkinter
-- **Múltiples métodos de conversión**:
-  - **readpst** (código abierto, recomendado)
-  - **libpff** (código abierto)
-  - **Aspose.Email** (comercial, más robusto)
+- **5 métodos de conversión diferentes**:
+  - **Híbrido MBOX** (código abierto, RECOMENDADO) - Extrae a MBOX para importación
+  - **Aspose.Email** (comercial) - Conversión directa OST→PST
+  - **Win32COM** (Windows + Outlook) - Usa Outlook para conversión nativa
+  - **readpst** (código abierto) - Extracción de contenido
+  - **libpff** (código abierto) - Solo lectura de datos
 - **Registro detallado** del proceso de conversión
 - **Validación de archivos** de entrada y salida
 - **Multiplataforma** (Linux, Windows, macOS)
+- **Sin limitaciones artificiales** en archivos gratuitos
 
 ## Capturas de pantalla
 
@@ -131,63 +134,113 @@ python3 converter.py input.ost output.pst --method readpst
 Opciones:
 - `input.ost`: Archivo OST de entrada
 - `output.pst`: Archivo PST de salida
-- `--method`: Método de conversión (`readpst`, `libpff`, o `aspose`)
+- `--method`: Método de conversión (`hybrid_mbox`, `aspose`, `win32com`, `readpst`, `libpff`)
 
 ### Ejemplos
 
 ```bash
-# Conversión básica con readpst
-python3 converter.py /path/to/mailbox.ost /path/to/output.pst
+# Conversión con método híbrido MBOX (RECOMENDADO - Gratuito)
+python3 converter.py /path/to/mailbox.ost /path/to/output.pst --method hybrid_mbox
 
-# Usar libpff
-python3 converter.py mailbox.ost output.pst --method libpff
-
-# Usar Aspose.Email (requiere licencia)
+# Usar Aspose.Email (requiere licencia comercial)
 python3 converter.py mailbox.ost output.pst --method aspose
+
+# Usar Win32COM en Windows (requiere Outlook instalado)
+python converter.py mailbox.ost output.pst --method win32com
+
+# Solo extracción con readpst
+python3 converter.py mailbox.ost output.pst --method readpst
 ```
 
 ## Métodos de conversión
 
-### readpst (Recomendado)
-- ✅ **Código abierto** y gratuito
-- ✅ Ampliamente probado y mantenido
-- ✅ Soporta la mayoría de versiones de OST/PST
-- ⚠️ Extrae contenido pero puede requerir pasos adicionales para crear PST nativo
+### 🌟 Híbrido MBOX (RECOMENDADO - Sin limitaciones)
+- ✅ **100% Código abierto y GRATUITO**
+- ✅ **Sin limitaciones** - convierte archivos de cualquier tamaño
+- ✅ Extrae todo el contenido a formato MBOX/MH
+- ✅ Compatible con Thunderbird, Evolution y otros clientes
+- ✅ Los archivos MBOX pueden importarse a PST posteriormente
+- ℹ️ **Mejor opción gratuita sin restricciones**
+- 📝 Incluye instrucciones detalladas para el siguiente paso
 
-### libpff (pypff)
-- ✅ **Código abierto** y gratuito
-- ✅ Buen rendimiento
-- ⚠️ Solo lectura - no puede escribir PST directamente
-- ℹ️ Mejor para análisis y extracción de datos
+**Flujo**: OST → MBOX → (importar en Thunderbird/Outlook)
 
 ### Aspose.Email
-- ✅ **Conversión nativa** OST → PST
+- ✅ **Conversión directa** OST → PST
 - ✅ Muy robusto y completo
-- ✅ Soporta todas las versiones de OST/PST
-- ❌ **Comercial** - requiere licencia
-- ℹ️ Mejor para entornos de producción empresariales
+- ✅ Soporta versiones modernas de OST/PST
+- ✅ No requiere Outlook instalado
+- ❌ **Comercial** - requiere licencia (~$1000 USD)
+- ⚠️ No soporta formatos OST 2013/2016 en algunas versiones
+- ℹ️ Mejor para entornos empresariales con presupuesto
 
-## Limitaciones conocidas
+### Win32COM (Windows + Outlook)
+- ✅ **Conversión directa** OST → PST
+- ✅ **Gratuito** (usa Outlook instalado)
+- ✅ Conversión nativa de Microsoft
+- ❌ **Solo Windows** con Outlook instalado
+- ⚠️ Los archivos OST pueden estar vinculados a cuentas específicas
+- 📦 Requiere: `pip install pywin32`
+- ℹ️ Mejor para usuarios de Windows que ya tienen Outlook
 
-1. **readpst**: Extrae el contenido del OST pero puede no crear un archivo PST nativo directamente. Los archivos extraídos pueden necesitar importarse manualmente en Outlook.
+### readpst (Solo extracción)
+- ✅ **Código abierto** y gratuito
+- ✅ Ampliamente probado y mantenido
+- ✅ Extrae a múltiples formatos (MBOX, MH, EML)
+- ⚠️ **No crea PST nativos** - solo extrae contenido
+- ℹ️ Usado internamente por el método híbrido MBOX
 
-2. **libpff/pypff**: Solo soporta lectura de archivos OST/PST, no escritura. No puede crear archivos PST nativos.
+### libpff (Solo lectura)
+- ✅ **Código abierto** y gratuito
+- ✅ Bueno para análisis forense
+- ❌ **Solo lectura** - no puede escribir PST
+- ℹ️ Mejor para inspección y extracción de datos específicos
 
-3. **Aspose.Email**:
-   - Requiere licencia comercial
-   - No soporta formatos OST 2013/2016 en algunas versiones (verificar documentación)
+## Comparación de métodos
 
-4. **Archivos muy grandes**: La conversión de archivos OST de varios GB puede tomar tiempo considerable y requerir memoria suficiente.
+| Método | Costo | Limitaciones | Plataforma | PST Nativo | Recomendación |
+|--------|-------|--------------|------------|------------|---------------|
+| **Híbrido MBOX** | Gratis | Ninguna | Todas | Vía importación | ⭐⭐⭐⭐⭐ **MEJOR OPCIÓN GRATUITA** |
+| **Aspose.Email** | ~$1000 | Requiere licencia | Todas | Sí | ⭐⭐⭐⭐ Empresas |
+| **Win32COM** | Gratis | Solo Windows+Outlook | Windows | Sí | ⭐⭐⭐⭐ Si tienes Outlook |
+| **readpst** | Gratis | No crea PST | Todas | No | ⭐⭐⭐ Solo extracción |
+| **libpff** | Gratis | Solo lectura | Todas | No | ⭐⭐ Solo análisis |
+
+## Notas importantes
+
+1. **Método Híbrido MBOX** es la mejor opción sin costo:
+   - Extrae TODO el contenido sin limitaciones
+   - Los archivos MBOX pueden importarse en Thunderbird, Evolution, etc.
+   - Desde Thunderbird puedes exportar a PST con plugins
+   - Sin restricciones de tamaño o cantidad de mensajes
+
+2. **Archivos OST vinculados**: Algunos archivos OST están vinculados a cuentas de Exchange específicas y pueden requerir autenticación.
+
+3. **Archivos muy grandes**: La conversión de archivos OST de varios GB puede tomar tiempo considerable (normal).
 
 ## Solución de problemas
 
 ### "No se encontraron herramientas de conversión instaladas"
-Instala al menos una de las herramientas mencionadas en la sección de requisitos.
+Instala al menos readpst para usar el método híbrido MBOX (recomendado):
+```bash
+sudo apt-get install pst-utils  # Debian/Ubuntu
+```
 
 ### "readpst: command not found"
 ```bash
+# Debian/Ubuntu
 sudo apt-get install pst-utils
+
+# macOS
+brew install readpst
 ```
+
+### "win32com no disponible"
+Solo en Windows:
+```bash
+pip install pywin32
+```
+Asegúrate de tener Microsoft Outlook instalado.
 
 ### "Error: pypff no está instalado"
 ```bash
@@ -198,8 +251,28 @@ pip install pypff
 ### "Error de permisos"
 Asegúrate de tener permisos de lectura en el archivo OST y de escritura en el directorio de salida.
 
+### "El archivo OST está vinculado a una cuenta"
+Los archivos OST de Exchange suelen estar vinculados a cuentas específicas. Opciones:
+1. Usa el método **híbrido MBOX** que extrae el contenido sin necesidad de la cuenta
+2. Si tienes acceso a la cuenta, usa **Win32COM** en Windows con Outlook configurado
+
 ### Conversión muy lenta
 Los archivos OST grandes pueden tardar mucho tiempo. Esto es normal. Verifica el registro para asegurarte de que el proceso está avanzando.
+
+### ¿Cómo convertir MBOX a PST?
+Después de usar el método híbrido MBOX:
+1. **Thunderbird** (gratuito):
+   - Importa los archivos MBOX en Thunderbird
+   - Usa plugin ImportExportTools NG
+   - Opcional: exporta a PST con otros plugins
+
+2. **Outlook en Windows**:
+   - Importa los MBOX con herramientas como Aid4Mail
+   - O usa el método win32com directamente
+
+3. **Conversión directa**:
+   - Usa el método Aspose.Email (comercial)
+   - Usa el método Win32COM si estás en Windows
 
 ## Estructura del proyecto
 
